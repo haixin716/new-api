@@ -40,7 +40,7 @@ func GetPricing(c *gin.Context) {
 
 	c.JSON(200, gin.H{
 		"success":            true,
-		"data":               pricing,
+		"data":               filterPricingByUsableGroups(pricing, usableGroup),
 		"vendors":            model.GetVendors(),
 		"group_ratio":        groupRatio,
 		"usable_group":       usableGroup,
@@ -72,4 +72,27 @@ func ResetModelRatio(c *gin.Context) {
 		"success": true,
 		"message": "重置模型倍率成功",
 	})
+}
+
+// filterPricingByUsableGroups filters pricing models to only include those
+// that belong to at least one of the user's usable groups, and strips
+// enable_groups to only contain visible groups.
+func filterPricingByUsableGroups(pricing []model.Pricing, usableGroup map[string]string) []model.Pricing {
+	if len(usableGroup) == 0 {
+		return pricing
+	}
+	filtered := make([]model.Pricing, 0, len(pricing))
+	for _, p := range pricing {
+		visibleGroups := make([]string, 0)
+		for _, g := range p.EnableGroup {
+			if _, ok := usableGroup[g]; ok {
+				visibleGroups = append(visibleGroups, g)
+			}
+		}
+		if len(visibleGroups) > 0 {
+			p.EnableGroup = visibleGroups
+			filtered = append(filtered, p)
+		}
+	}
+	return filtered
 }
